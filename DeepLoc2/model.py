@@ -132,7 +132,8 @@ class ProtT5E2E(pl.LightningModule):
 class ESM1bE2E(pl.LightningModule):
     def __init__(self):
         super().__init__()
-        model, alphabet = pretrained.load_model_and_alphabet("esm1b_t33_650M_UR50S")
+        # model, alphabet = pretrained.load_model_and_alphabet("esm1b_t33_650M_UR50S")
+        model, alphabet = pretrained.load_model_and_alphabet("facebook/esm2_t12_35M_UR50D")
         self.embedding_func = model.eval()
         self.subcel_clfs = nn.ModuleList([ESM1bFrozen.load_from_checkpoint(pkg_resources.resource_filename(__name__,f"models/models_esm1b/{i}_1Layer.ckpt"), map_location="cpu").eval() for i in range(5)])
         self.signaltype_clfs = nn.ModuleList([SignalTypeMLP.load_from_checkpoint(pkg_resources.resource_filename(__name__,f"models/models_esm1b/signaltype/{i}.ckpt"), map_location="cpu").eval() for i in range(5)])
