@@ -9,6 +9,8 @@ import torch.nn.functional as F
 from .attr_prior import *
 from pathlib import Path
 import pkg_resources
+from transformers import AutoModel, AutoTokenizer
+
 
 class AttentionHead(nn.Module):
       def __init__(self, hidden_dim, n_heads):
@@ -130,13 +132,24 @@ class ProtT5E2E(pl.LightningModule):
         return torch.stack(x_loc_preds).mean(0).cpu().numpy(), torch.stack(x_attnss).mean(0).cpu().numpy(), torch.stack(x_signal_preds).mean(0).cpu().numpy()
 
 class ESM1bE2E(pl.LightningModule):
+    # def __init__(self):
+    #     super().__init__()
+    #     # model, alphabet = pretrained.load_model_and_alphabet("esm1b_t33_650M_UR50S")
+    #     model, alphabet = pretrained.load_model_and_alphabet("facebook/esm2_t12_35M_UR50D")
+    #     self.embedding_func = model.eval()
+    #     self.subcel_clfs = nn.ModuleList([ESM1bFrozen.load_from_checkpoint(pkg_resources.resource_filename(__name__,f"models/models_esm1b/{i}_1Layer.ckpt"), map_location="cpu").eval() for i in range(5)])
+    #     self.signaltype_clfs = nn.ModuleList([SignalTypeMLP.load_from_checkpoint(pkg_resources.resource_filename(__name__,f"models/models_esm1b/signaltype/{i}.ckpt"), map_location="cpu").eval() for i in range(5)])
+
     def __init__(self):
         super().__init__()
-        # model, alphabet = pretrained.load_model_and_alphabet("esm1b_t33_650M_UR50S")
-        model, alphabet = pretrained.load_model_and_alphabet("facebook/esm2_t12_35M_UR50D")
-        self.embedding_func = model.eval()
-        self.subcel_clfs = nn.ModuleList([ESM1bFrozen.load_from_checkpoint(pkg_resources.resource_filename(__name__,f"models/models_esm1b/{i}_1Layer.ckpt"), map_location="cpu").eval() for i in range(5)])
-        self.signaltype_clfs = nn.ModuleList([SignalTypeMLP.load_from_checkpoint(pkg_resources.resource_filename(__name__,f"models/models_esm1b/signaltype/{i}.ckpt"), map_location="cpu").eval() for i in range(5)])
+        # Load model and tokenizer from Hugging Face
+        self.model_name = "facebook/esm2_t12_35M_UR50D"
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self.model = AutoModel.from_pretrained(self.model_name).eval()
+        
+        # Example loading subcellular classifiers and signal type classifiers
+        self.subcel_clfs = nn.ModuleList([ESM1bFrozen.load_from_checkpoint(pkg_resources.resource_filename(__name__, f"models/models_esm1b/{i}_1Layer.ckpt"), map_location="cpu").eval() for i in range(5)])
+        self.signaltype_clfs = nn.ModuleList([SignalTypeMLP.load_from_checkpoint(pkg_resources.resource_filename(__name__, f"models/models_esm1b/signaltype/{i}.ckpt"), map_location="cpu").eval() for i in range(5)])
 
     def forward(self, toks, lens, non_mask):#, dct_mat, idct_mat):
         # in lightning, forward defines the prediction/inference actions
