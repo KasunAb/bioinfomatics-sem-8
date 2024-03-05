@@ -147,6 +147,10 @@ class ESM1bE2E(pl.LightningModule):
         self.model = AutoModel.from_pretrained(self.model_name).eval()
         print(f"Successfully loaded model and tokenizer for '{self.model_name}'.")
 
+        model_, alphabet = pretrained.load_model_and_alphabet("esm1b_t33_650M_UR50S")
+        self.embedding_func = model_.eval()
+  
+  
         # Example loading subcellular classifiers and signal type classifiers
         self.subcel_clfs = nn.ModuleList([ESM1bFrozen.load_from_checkpoint(pkg_resources.resource_filename(__name__, f"models/models_esm1b/{i}_1Layer.ckpt"), map_location="cpu").eval() for i in range(5)])
         self.signaltype_clfs = nn.ModuleList([SignalTypeMLP.load_from_checkpoint(pkg_resources.resource_filename(__name__, f"models/models_esm1b/signaltype/{i}.ckpt"), map_location="cpu").eval() for i in range(5)])
@@ -155,7 +159,9 @@ class ESM1bE2E(pl.LightningModule):
     def forward(self, toks, lens, non_mask):#, dct_mat, idct_mat):
         # in lightning, forward defines the prediction/inference actions
         device = self.device
-        # x = self.embedding_func(toks.to(self.device), repr_layers=[33])["representations"][33][:, 1:-1].float()
+        x = self.embedding_func(toks.to(self.device), repr_layers=[33])["representations"][33][:, 1:-1].float()
+        print("---------------------------------------------")
+        print(x)
         print("---------------------------------------------")
         print(toks)
         outputs = self.model(input_ids=toks['input_ids'].to(self.device), attention_mask=toks['attention_mask'].to(self.device))
