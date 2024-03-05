@@ -153,13 +153,13 @@ class ESM1bE2E(pl.LightningModule):
 
 
     def forward(self, toks, lens, non_mask):#, dct_mat, idct_mat):
-        print(toks)
         # in lightning, forward defines the prediction/inference actions
         device = self.device
         # x = self.embedding_func(toks.to(self.device), repr_layers=[33])["representations"][33][:, 1:-1].float()
-        
-        outputs = self.tokenizer(input_ids=toks['input_ids'].to(self.device), attention_mask=toks['attention_mask'].to(self.device))
-        
+        print("---------------------------------------------")
+        print(toks)
+        outputs = self.model(input_ids=toks['input_ids'].to(self.device), attention_mask=toks['attention_mask'].to(self.device))
+
         x = outputs.last_hidden_state
         x_loc_preds, x_signal_preds, x_attnss = [], [], []
         for i in range(5):
