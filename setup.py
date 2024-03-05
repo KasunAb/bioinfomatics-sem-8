@@ -7,7 +7,9 @@ def _download_models():
     from esm import pretrained
     from transformers import T5Tokenizer, T5EncoderModel, logging
     logging.set_verbosity_error()
-    _, _ = pretrained.load_model_and_alphabet("esm1b_t33_650M_UR50S") 
+    # _, _ = pretrained.load_model_and_alphabet("esm1b_t33_650M_UR50S") 
+    _, _ = pretrained.load_model_and_alphabet("facebook/esm2_t12_35M_UR50D") 
+    
 
 class PostDevelopCommand(develop):
     """Post-installation for development mode."""
