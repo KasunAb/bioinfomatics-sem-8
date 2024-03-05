@@ -141,8 +141,9 @@ class ESM1bE2E(pl.LightningModule):
     def __init__(self):
         super().__init__()
         # Load model and tokenizer from Hugging Face
-        self.model_name = "facebook/esm2_t12_35M_UR50D"
+        self.model_name = "facebook/esm2_t6_8M_UR50D"
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        
         self.model = AutoModel.from_pretrained(self.model_name).eval()
         print(f"Successfully loaded model and tokenizer for '{self.model_name}'.")
 
@@ -152,11 +153,13 @@ class ESM1bE2E(pl.LightningModule):
 
 
     def forward(self, toks, lens, non_mask):#, dct_mat, idct_mat):
+        print(toks)
         # in lightning, forward defines the prediction/inference actions
         device = self.device
-        # x = self.model(toks.to(self.device), repr_layers=[33])["representations"][33][:, 1:-1].float()
+        # x = self.embedding_func(toks.to(self.device), repr_layers=[33])["representations"][33][:, 1:-1].float()
         
-        outputs = self.model(input_ids=toks['input_ids'].to(self.device), attention_mask=toks['attention_mask'].to(self.device))
+        outputs = self.tokenizer(input_ids=toks['input_ids'].to(self.device), attention_mask=toks['attention_mask'].to(self.device))
+        
         x = outputs.last_hidden_state
         x_loc_preds, x_signal_preds, x_attnss = [], [], []
         for i in range(5):
