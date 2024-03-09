@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from .attr_prior import *
 from pathlib import Path
 import pkg_resources
-from transformers import AutoModel, AutoTokenizer
+from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer
 
 class AttentionHead(nn.Module):
       def __init__(self, hidden_dim, n_heads):
@@ -121,6 +121,7 @@ class ProtT5E2E(pl.LightningModule):
             attention_mask=torch.tensor(toks['attention_mask'], 
                 device=self.device)).last_hidden_state[:, :-1].float()
         x_loc_preds, x_signal_preds, x_attnss = [], [], []
+        
         for i in range(5):
           x_pred, x_pool, x_attns = self.subcel_clfs[i].predict(x, lens.to(self.device), non_mask[:, :-1].to(self.device))
           x_loc_preds.append(torch.sigmoid(x_pred))
@@ -130,43 +131,23 @@ class ProtT5E2E(pl.LightningModule):
 
         return torch.stack(x_loc_preds).mean(0).cpu().numpy(), torch.stack(x_attnss).mean(0).cpu().numpy(), torch.stack(x_signal_preds).mean(0).cpu().numpy()
 
-class ESM1bE2E(pl.LightningModule):
-    # def __init__(self):
-    #     super().__init__()
-    #     model, alphabet = pretrained.load_model_and_alphabet("esm1b_t33_650M_UR50S")
-    #     self.embedding_func = model.eval()
-    #     self.subcel_clfs = nn.ModuleList([ESM1bFrozen.load_from_checkpoint(pkg_resources.resource_filename(__name__,f"models/models_esm1b/{i}_1Layer.ckpt"), map_location="cpu").eval() for i in range(5)])
-    #     self.signaltype_clfs = nn.ModuleList([SignalTypeMLP.load_from_checkpoint(pkg_resources.resource_filename(__name__,f"models/models_esm1b/signaltype/{i}.ckpt"), map_location="cpu").eval() for i in range(5)])
 
+class ESM1bE2E(pl.LightningModule):
     def __init__(self):
         super().__init__()
-        # Load model and tokenizer from Hugging Face
-        self.model_name = "facebook/esm2_t6_8M_UR50D"
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        
-        self.model = AutoModel.from_pretrained(self.model_name).eval()
-        print(f"Successfully loaded model and tokenizer for '{self.model_name}'.")
+        model, alphabet = pretrained.load_model_and_alphabet("esm1b_t33_650M_UR50S")
+        self.embedding_func = model.eval()
+        self.subcel_clfs = nn.ModuleList([ESM1bFrozen.load_from_checkpoint(pkg_resources.resource_filename(__name__,f"models/models_esm1b/{i}_1Layer.ckpt"), map_location="cpu").eval() for i in range(5)])
+        self.signaltype_clfs = nn.ModuleList([SignalTypeMLP.load_from_checkpoint(pkg_resources.resource_filename(__name__,f"models/models_esm1b/signaltype/{i}.ckpt"), map_location="cpu").eval() for i in range(5)])
 
-        model_, alphabet = pretrained.load_model_and_alphabet("esm1b_t33_650M_UR50S")
-        self.embedding_func = model_.eval()
-  
-  
-        # Example loading subcellular classifiers and signal type classifiers
-        self.subcel_clfs = nn.ModuleList([ESM1bFrozen.load_from_checkpoint(pkg_resources.resource_filename(__name__, f"models/models_esm1b/{i}_1Layer.ckpt"), map_location="cpu").eval() for i in range(5)])
-        self.signaltype_clfs = nn.ModuleList([SignalTypeMLP.load_from_checkpoint(pkg_resources.resource_filename(__name__, f"models/models_esm1b/signaltype/{i}.ckpt"), map_location="cpu").eval() for i in range(5)])
-
+    model_checkpoint = "facebook/esm2_t6_8M_UR50D"
+    num_labels = max(train_labels + test_labels) + 1  # Add 1 since 0 can be a label
+    model = AutoModelForSequenceClassification.from_pretrained(model_checkpoint, num_labels=num_labels)
 
     def forward(self, toks, lens, non_mask):#, dct_mat, idct_mat):
         # in lightning, forward defines the prediction/inference actions
         device = self.device
         x = self.embedding_func(toks.to(self.device), repr_layers=[33])["representations"][33][:, 1:-1].float()
-        print("---------------------------------------------")
-        print(x)
-        print("---------------------------------------------")
-        print(toks)
-        outputs = self.model(input_ids=toks['input_ids'].to(self.device), attention_mask=toks['attention_mask'].to(self.device))
-
-        x = outputs.last_hidden_state
         x_loc_preds, x_signal_preds, x_attnss = [], [], []
         for i in range(5):
           x_pred, x_pool, x_attns = self.subcel_clfs[i].predict(x, lens.to(self.device), non_mask[:, 1:-1].to(self.device))
